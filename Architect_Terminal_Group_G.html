@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STATION_05_MEMORY_ARCHITECT</title>
+    <style>
+        :root { --neon: #ffaa00; --bg: #0a0805; --dim: #332200; --fail: #ff0000; }
+        body { background: var(--bg); color: var(--neon); font-family: 'Courier New', monospace; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; text-transform: uppercase; }
+        
+        body::before { content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); z-index: 2; background-size: 100% 2px, 3px 100%; pointer-events: none; }
+
+        #monitor { width: 95%; max-width: 1100px; border: 3px solid var(--neon); padding: 40px; background: rgba(15, 10, 0, 0.95); box-shadow: inset 0 0 25px rgba(255,170,0,0.15); position: relative; box-sizing: border-box; z-index: 1; }
+        
+        h1 { letter-spacing: 6px; border-bottom: 2px solid var(--neon); padding-bottom: 12px; margin-top: 0; font-size: 2.2rem; }
+        
+        .grid-container { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; width: 350px; margin: 15px auto; }
+        .grid-cell { width: 60px; height: 60px; border: 1px solid var(--dim); cursor: pointer; transition: background 0.1s; }
+        .active-node { background: var(--neon) !important; box-shadow: 0 0 20px var(--neon); }
+        .wrong-node { background: var(--fail) !important; box-shadow: 0 0 20px var(--fail); }
+
+        .matrix-grid { display: grid; gap: 10px; margin-top: 5px; width: 100%; }
+        .grid-6 { grid-template-columns: repeat(3, 1fr); }
+        .grid-12 { grid-template-columns: repeat(4, 1fr); }
+        .id-card { border: 1px solid var(--neon); padding: 10px; background: rgba(34, 255, 34, 0.05); }
+        .id-label { font-size: 0.8rem; color: #888; display: block; margin-bottom: 3px; }
+        .id-value { font-size: 1.8rem; font-weight: bold; color: #fff; }
+
+        #display-box { min-height: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 15px 0; border: 1px solid var(--dim); background: #000; text-align: center; padding: 20px; font-size: 4.5rem; font-weight: bold; }
+        
+        #input-section { text-align: center; }
+        #prompt-display { font-size: 2rem; color: #fff; margin-bottom: 10px; font-weight: bold; letter-spacing: 2px; }
+        input { background: transparent; border: none; border-bottom: 3px solid var(--neon); color: var(--neon); font-family: inherit; font-size: 3.5rem; width: 100%; text-align: center; outline: none; }
+        
+        .hidden { display: none; }
+        .btn { background: var(--neon); color: black; border: none; padding: 18px 35px; font-family: inherit; font-weight: bold; cursor: pointer; margin-top: 30px; font-size: 1.3rem; }
+        
+        .shake { animation: shake 0.4s; }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+        
+        .level-indicator { font-size: 0.9rem; color: #444; margin-bottom: 10px; display: block; }
+        #instruction { font-size: 1.2rem; color: #fff; letter-spacing: 2px; height: 30px; }
+
+        /* === ESCAPE ROOM POLISH === */
+        .station-id { font-size: 0.75rem; color: #7a5500; letter-spacing: 4px; margin-bottom: 6px; display: block; }
+        .room-title { font-size: 0.7rem; color: #7a5500; letter-spacing: 3px; text-align: right; position: absolute; top: 14px; right: 20px; }
+        .skill-tags { display: flex; gap: 10px; flex-wrap: wrap; margin: 18px 0 24px 0; }
+        .skill-tag {
+            border: 1px solid var(--neon);
+            color: var(--neon);
+            font-size: 0.72rem;
+            letter-spacing: 3px;
+            padding: 5px 14px;
+            background: rgba(255,170,0,0.06);
+            box-shadow: 0 0 8px rgba(255,170,0,0.15);
+        }
+        .skill-tag::before { content: "▸ "; }
+        .divider-line { border: none; border-top: 1px solid #3a2800; margin: 18px 0; }
+        .mission-block { border-left: 3px solid var(--neon); padding-left: 16px; margin: 16px 0; }
+        .mission-block p { margin: 6px 0; }
+        .status-line { font-size: 0.8rem; color: #8a6000; letter-spacing: 2px; margin-top: 20px; }
+        .coordinator-notice { font-size: 0.8rem; color: #ffaa00; background: rgba(255,170,0,0.08); border: 1px dashed #7a5500; padding: 10px 14px; margin-top: 16px; letter-spacing: 2px; }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+        .blink { animation: blink 1.4s infinite; }
+    </style>
+</head>
+<body>
+
+<div id="monitor">
+    <div id="briefing">
+        <span class="room-title">ARCHITECT TERMINAL // STATION 05 OF 04</span>
+        <span class="station-id">◈ MEMORY_ARCHITECT_NODE // SEQUENCE RECONSTRUCTION ACTIVE</span>
+        <h1>STATION_05: MEMORY_ARCHITECT</h1>
+
+        <div class="skill-tags">
+            <span class="skill-tag">MEMORY &amp; RECALL</span>
+            <span class="skill-tag">PATTERN RECOGNITION</span>
+            <span class="skill-tag">SEQUENCING</span>
+        </div>
+
+        <hr class="divider-line">
+
+        <div class="mission-block">
+            <p><strong>MISSION:</strong> RECONSTRUCT THE FRAGMENT SEQUENCE // SYNCHRONIZE IDENTITY MATRIX ACROSS FIVE MEMORY PROTOCOLS.</p>
+            <p style="font-size: 0.9rem; color: #aa7700; margin-top: 10px;">THIS TERMINAL HOLDS THE ARCHITECTURE OF THE SEQUENCE. SOLVE IT TO REVEAL THE ORDER YOUR TEAM'S FRAGMENTS MUST BE ENTERED INTO THE PRIMARY HUB.</p>
+        </div>
+
+        <hr class="divider-line">
+
+        <div class="coordinator-notice">
+            ⚠ NOTE: THIS IS A COORDINATION TERMINAL. THE OUTPUT OF THIS STATION DETERMINES THE FRAGMENT ORDER REQUIRED AT THE PRIMARY HUB. ENSURE YOUR TEAM HAS COLLECTED ALL FRAGMENTS BEFORE PROCEEDING.
+        </div>
+
+        <p class="status-line">STATUS: SEQUENCE RECONSTRUCTION ACTIVE <span class="blink">▮</span> // SYNC REQUIRED // 5 MEMORY PROTOCOLS</p>
+
+        <button class="btn" onclick="initGame()" style="margin-top: 28px;">ENGAGE CORE</button>
+    </div>
+
+    <div id="game-zone" class="hidden">
+        <span id="lvl-tag" class="level-indicator">---</span>
+        <div id="display-section">
+            <p id="instruction">PREPARING...</p>
+            <div id="display-box">---</div>
+        </div>
+
+        <div id="input-section" class="hidden">
+            <div id="prompt-display">RECALL_VALUE:</div>
+            <input type="text" id="main-input" autocomplete="off">
+            <p style="font-size: 0.8rem; color: #444; margin-top: 10px;">PRESS ENTER TO SUBMIT</p>
+        </div>
+
+        <div id="win" class="hidden" style="text-align: center;">
+            <h1 style="color: #fff;">SYNC COMPLETE</h1>
+            <h1 style="font-size: 5.5rem; text-shadow: 0 0 25px var(--neon); margin: 20px 0; letter-spacing: 15px;">TIRH</h1>
+            <p>THIS IS THE ORDER YOUR TEAM'S FRAGMENTS MUST BE ENTERED INTO THE PRIMARY HUB.</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentLvl = 1;
+    let currentRound = 1; 
+    let correctAnswer = "";
+    let clickingActive = false;
+    let l2_targets = [];
+    let l2_clicks = [];
+    let l5_sequence = [];
+    let l5_step = 0;
+
+    const syms = ["!", "@", "#", "$", "%", "&", "*", "+", "?", "="];
+    const rolesPool = ["AGENT", "PILOT", "GUARD", "TECH", "HACKER", "SCOUT", "ENG", "MEDIC", "SENTRY", "CHIEF", "ROOK", "GHOST", "DRONE", "COMS"];
+    const vars = ["ALPHA", "BRAVO", "GAMMA", "DELTA", "OMEGA", "SIGMA"];
+
+    function initGame() {
+        document.getElementById('briefing').classList.add('hidden');
+        document.getElementById('game-zone').classList.remove('hidden');
+        loadLevel();
+    }
+
+    function loadLevel() {
+        document.getElementById('input-section').classList.add('hidden');
+        document.getElementById('display-section').classList.remove('hidden');
+        document.getElementById('main-input').value = "";
+        document.getElementById('lvl-tag').innerText = `MEM_SYNC_0${currentLvl}`;
+        document.getElementById('display-box').style.fontSize = "4.5rem";
+        clickingActive = false;
+
+        if (currentLvl === 1) setupL1();
+        else if (currentLvl === 2) setupL2();
+        else if (currentLvl === 3) setupL3();
+        else if (currentLvl === 4) setupL4();
+        else if (currentLvl === 5) setupL5();
+    }
+
+    // LEVEL 1: PROGRESSIVE CHAIN
+    function setupL1() {
+        let len = 3 + currentRound;
+        correctAnswer = "";
+        for(let i=0; i<len; i++) correctAnswer += syms[Math.floor(Math.random()*syms.length)];
+        document.getElementById('instruction').innerText = `MEMORIZE CHAIN [${currentRound}/3]`;
+        document.getElementById('display-box').innerText = correctAnswer;
+        setTimeout(() => { showInput("RECALL CHAIN:"); }, 1500 + (currentRound * 500));
+    }
+
+    // LEVEL 2: PROGRESSIVE GRID
+    function setupL2() {
+        document.getElementById('instruction').innerText = `RECALL NODES [ROUND ${currentRound}/5]`;
+        l2_targets = []; l2_clicks = [];
+        let counts = [0, 3, 5, 7, 9, 11];
+        while(l2_targets.length < counts[currentRound]) {
+            let r = Math.floor(Math.random() * 25);
+            if(!l2_targets.includes(r)) l2_targets.push(r);
+        }
+        let html = '<div class="grid-container">';
+        for(let i=0; i<25; i++) html += `<div class="grid-cell ${l2_targets.includes(i)?'active-node':''}" data-idx="${i}" onclick="gridClick(this)"></div>`;
+        document.getElementById('display-box').innerHTML = html + '</div>';
+
+        setTimeout(() => {
+            document.querySelectorAll('.grid-cell').forEach(c => c.classList.remove('active-node'));
+            document.getElementById('instruction').innerText = "RESTORE PATTERN";
+            clickingActive = true;
+        }, 2000 + (currentRound * 300));
+    }
+
+    function gridClick(el) {
+        if(!clickingActive) return;
+        let idx = parseInt(el.dataset.idx);
+
+        if (currentLvl === 2) {
+            if(l2_clicks.includes(idx)) return;
+            if(l2_targets.includes(idx)) {
+                el.classList.add('active-node');
+                l2_clicks.push(idx);
+                if(l2_clicks.length === l2_targets.length) {
+                    clickingActive = false;
+                    setTimeout(() => { if(currentRound < 5){currentRound++; setupL2();} else {currentRound=1; nextLevel();} }, 600);
+                }
+            } else {
+                el.classList.add('wrong-node');
+                triggerFail();
+            }
+        } 
+        else if (currentLvl === 5) {
+            // Reverse Logic: The last item in l5_sequence is the first the user should click
+            let targetIdx = l5_sequence[(l5_sequence.length - 1) - l5_step];
+            
+            if (idx === targetIdx) {
+                el.classList.add('active-node');
+                l5_step++;
+                if (l5_step === l5_sequence.length) {
+                    clickingActive = false;
+                    setTimeout(() => {
+                        if (currentRound < 2) { currentRound++; setupL5(); }
+                        else { currentRound = 1; nextLevel(); }
+                    }, 600);
+                }
+            } else {
+                el.classList.add('wrong-node');
+                triggerFail();
+            }
+        }
+    }
+
+    // LEVEL 3: LINK MATRIX
+    function setupL3() {
+        document.getElementById('display-box').style.fontSize = "1rem";
+        document.getElementById('instruction').innerText = `MEMORIZE MATRIX [ROUND ${currentRound}/2]`;
+        let count = (currentRound === 1) ? 6 : 12;
+        let pool = [...rolesPool].sort(() => 0.5 - Math.random()).slice(0, count);
+        let cards = pool.map(role => ({ role, val: Math.floor(Math.random()*89)+10 }));
+        let target = cards[Math.floor(Math.random()*count)];
+        correctAnswer = target.val.toString();
+        let gridClass = (currentRound === 1) ? 'grid-6' : 'grid-12';
+        let html = `<div class="matrix-grid ${gridClass}">`;
+        cards.forEach(c => { html += `<div class="id-card"><span class="id-label">${c.role}</span><span class="id-value">${c.val}</span></div>`; });
+        document.getElementById('display-box').innerHTML = html + '</div>';
+        let memoTime = (currentRound === 1) ? 6000 : 10000;
+        setTimeout(() => {
+            document.getElementById('display-box').innerHTML = "<div style='font-size:2rem; color:red; letter-spacing:4px;'>SCRUBBING...</div>";
+            setTimeout(() => { showInput(`RECALL VALUE FOR: [${target.role}]`); }, 2000);
+        }, memoTime);
+    }
+
+    // LEVEL 4: MATH RECALL
+    function setupL4() {
+        let pool = [...vars].sort(() => 0.5 - Math.random());
+        let v1 = Math.floor(Math.random()*20)+1; let v2 = Math.floor(Math.random()*20)+1;
+        correctAnswer = (v1 + v2).toString();
+        document.getElementById('display-box').style.fontSize = "2.5rem";
+        document.getElementById('instruction').innerText = "ALLOCATING VARIABLES";
+        document.getElementById('display-box').innerHTML = `${pool[0]}=${v1} | ${pool[1]}=${v2}<br>${pool[2]}=${Math.floor(Math.random()*30)}`;
+        setTimeout(() => {
+            document.getElementById('display-box').innerHTML = "---";
+            setTimeout(() => { showInput(`SUM: ${pool[0]} + ${pool[1]}`); }, 2000);
+        }, 5000);
+    }
+
+    // NEW LEVEL 5: REVERSE SEQUENTIAL GRID
+    function setupL5() {
+        document.getElementById('instruction').innerText = `WATCH SEQUENCE [ROUND ${currentRound}/2]`;
+        l5_sequence = [];
+        l5_step = 0;
+        let len = (currentRound === 1) ? 5 : 7;
+        
+        while(l5_sequence.length < len) {
+            let r = Math.floor(Math.random() * 25);
+            if(l5_sequence[l5_sequence.length-1] !== r) l5_sequence.push(r);
+        }
+
+        let html = '<div class="grid-container">';
+        for(let i=0; i<25; i++) html += `<div class="grid-cell" id="l5-cell-${i}" data-idx="${i}" onclick="gridClick(this)"></div>`;
+        document.getElementById('display-box').innerHTML = html + '</div>';
+
+        // Flash sequence one by one
+        let i = 0;
+        let interval = setInterval(() => {
+            let cell = document.getElementById(`l5-cell-${l5_sequence[i]}`);
+            cell.classList.add('active-node');
+            setTimeout(() => cell.classList.remove('active-node'), 400);
+            i++;
+            if (i >= l5_sequence.length) {
+                clearInterval(interval);
+                setTimeout(() => {
+                    document.getElementById('instruction').innerText = "REVERSE THE SEQUENCE";
+                    clickingActive = true;
+                }, 800);
+            }
+        }, 800);
+    }
+
+    function showInput(promptText) {
+        document.getElementById('display-section').classList.add('hidden');
+        document.getElementById('prompt-display').innerText = promptText;
+        document.getElementById('input-section').classList.remove('hidden');
+        document.getElementById('main-input').focus();
+    }
+
+    function triggerFail() {
+        document.getElementById('monitor').classList.add('shake');
+        setTimeout(() => {
+            document.getElementById('monitor').classList.remove('shake');
+            currentRound = 1;
+            loadLevel();
+        }, 400);
+    }
+
+    document.getElementById('main-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            if (this.value.toUpperCase().replace(/\s/g, '') === correctAnswer) {
+                if ((currentLvl === 1 && currentRound < 3) || (currentLvl === 3 && currentRound < 2)) {
+                    currentRound++; loadLevel();
+                } else {
+                    currentRound = 1; nextLevel();
+                }
+            } else {
+                this.value = ""; triggerFail();
+            }
+        }
+    });
+
+    function nextLevel() {
+        currentLvl++;
+        if (currentLvl <= 5) loadLevel();
+        else {
+            document.getElementById('display-section').classList.add('hidden');
+            document.getElementById('input-section').classList.add('hidden');
+            document.getElementById('win').classList.remove('hidden');
+        }
+    }
+</script>
+
+<script>
+    // 1. Disable Right-Click menu
+    document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        alert("!! SECURITY ALERT: UNAUTHORIZED SYSTEM INSPECTION DETECTED !!");
+    });
+
+    // 2. Disable F12 and Developer Tool Keyboard Shortcuts
+    document.onkeydown = function(e) {
+        // F12, Ctrl+Shift+I (Inspect), Ctrl+Shift+J (Console), Ctrl+U (View Source)
+        if(e.keyCode == 123 || 
+          (e.ctrlKey && e.shiftKey && (e.keyCode == 'I'.charCodeAt(0) || e.keyCode == 'J'.charCodeAt(0))) || 
+          (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0))) {
+            
+            alert("!! SECURITY ALERT: KEYBOARD BYPASS ATTEMPTED !!");
+            return false;
+        }
+    };
+</script>
+
+</body>
+</html>
